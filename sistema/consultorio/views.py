@@ -5,6 +5,7 @@ def index(request):
     return HttpResponse("Hello, world. You're at the consultorio index.")
 
 def generarReporte(request):
+    # Autentifación requerida
     pass
 
 def generarHistorial(request):
@@ -25,5 +26,5 @@ def consultarDatosDeCita(request):
 def crearConsulta(request):
     pass
 
-def obtenerDatosDeConsulta(request):
+def consultarDatosDeConsulta(request):
     pass

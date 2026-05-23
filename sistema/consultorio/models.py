@@ -1,7 +1,18 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 
-class Paciente(AbstractUser):
+class Usuario(AbstractUser):
+    """
+    Entidad usuario. Define a cualquier usuario en el sistema.
+
+    Características:
+        Nombre de usuario
+        Contraseña
+    """
+    
+    pass
+
+class Paciente(Usuario):
     """
     Entidad paciente
 
@@ -12,8 +23,6 @@ class Paciente(AbstractUser):
         Teléfono
         Edad
         Sexo
-
-    Identificación mediante nombre de usuario y contraseña
 
     Se debe permitir la consulta de sus datos por parte del paciente mismo y del médico, y la modificación y eliminación por parte del
     médico
