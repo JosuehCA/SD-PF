@@ -1,11 +1,12 @@
 Para crear su entorno virtual, hagan
-python -m venv <nombre del entorno>
+python -m venv \<nombre del entorno\>
 Yo como nombre suelo utilizar myenv
 
 Después inicien el entorno desde la terminal con:
 
-  Mac: source <path al entorno>/bin/activate
-  Windows: .\<path al entorno>\Scripts\activate
+  Mac: source \<path al entorno\>/bin/activate
+  
+  Windows: .\\\<path al entorno\>\Scripts\activate
 
 Y para instalar las librerías ya dentro del entorno (les sale el símbolo en la terminal si ya están dentro):
 
