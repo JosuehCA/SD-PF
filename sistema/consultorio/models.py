@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models as m
 from django.contrib.auth.models import AbstractUser
 
 class Usuario(AbstractUser):
@@ -6,10 +6,10 @@ class Usuario(AbstractUser):
     Entidad usuario. Define a cualquier usuario en el sistema.
 
     Características:
-        Nombre de usuario
-        Contraseña
+        Nombre de usuario (heredado)
+        Contraseña (heredado)
     """
-    
+
     pass
 
 class Paciente(Usuario):
@@ -17,9 +17,9 @@ class Paciente(Usuario):
     Entidad paciente
 
     Características:
-        Nombre
-        Dirección
-        Correo Electrónico
+        Nombre  (heredado)
+        Dirección   
+        Correo Electrónico (heredado)
         Teléfono
         Edad
         Sexo
@@ -28,9 +28,19 @@ class Paciente(Usuario):
     médico
     """
 
-    pass
+    direccion = m.CharField(max_length=200)
+    telefono = m.CharField(max_length=50)
+    edad = m.PositiveBigIntegerField()
+    sexo = m.CharField(
+        max_length=1,
+        choices = [
+            ('H', 'Hombre'),
+            ('M', 'Mujer')
+        ]
+    )
 
-class Cita(models.Model):
+
+class Cita(m.Model):
     """
     Entidad cita
 
@@ -44,9 +54,11 @@ class Cita(models.Model):
     una nueva cita o haber sido eliminada
     """
 
-    pass
+    paciente = m.ForeignKey('Paciente', on_delete=m.CASCADE, related_name="paciente_cita")
+    dia = m.DateField(auto_now_add=True)
+    hora = m.TimeField()
 
-class Consulta(models.Model):
+class Consulta(m.Model):
     """
     Entidad consulta. Representa una consulta realizada sobre un paciente
 
@@ -59,14 +71,26 @@ class Consulta(models.Model):
     INFORMACIÓN ENCRIPTADA
     """
 
-    pass
+    paciente = m.ForeignKey('Paciente', on_delete=m.CASCADE, related_name="paciente_consulta")
+    temperatura_corporal = m.DecimalField(max_digits=5, decimal_places=2)
+    peso = m.DecimalField(max_digits=5, decimal_places=2)
+    altura = m.IntegerField() # Altura en centímetros
+    presion_arterial = m.DecimalField(max_digits=5, decimal_places=2)
 
-class Historial(models.Model):
+class Historial(m.Model):
     """
     Entidad historial, generada por el médico sobre lo que ocurre en la consulta con el paciente
 
     Características:
-        ???
+        Diagnóstico del paciente
+        Resultados de análisis previos del paciente
+        Prescripciones del paciente
     """
 
-    pass
+    diagnostico = m.TextField()
+    resultados = m.TextField()
+    prescripciones = m.TextField()
+
+    class Meta:
+        verbose_name = "Historial"
+        verbose_name_plural = "Historiales"
