@@ -1,96 +1,74 @@
-from django.db import models as m
+from django.db import models
 from django.contrib.auth.models import AbstractUser
 
+
 class Usuario(AbstractUser):
-    """
-    Entidad usuario. Define a cualquier usuario en el sistema.
+    ROL_CHOICES = [
+        ("MEDICO", "Médico"),
+        ("PACIENTE", "Paciente"),
+    ]
 
-    Características:
-        Nombre de usuario (heredado)
-        Contraseña (heredado)
-    """
+    rol = models.CharField(max_length=20, choices=ROL_CHOICES, default="PACIENTE")
 
-    pass
-
-class Paciente(Usuario):
-    """
-    Entidad paciente
-
-    Características:
-        Nombre  (heredado)
-        Dirección   
-        Correo Electrónico (heredado)
-        Teléfono
-        Edad
-        Sexo
-
-    Se debe permitir la consulta de sus datos por parte del paciente mismo y del médico, y la modificación y eliminación por parte del
-    médico
-    """
-
-    direccion = m.CharField(max_length=200)
-    telefono = m.CharField(max_length=50)
-    edad = m.PositiveBigIntegerField()
-    sexo = m.CharField(
-        max_length=1,
-        choices = [
-            ('H', 'Hombre'),
-            ('M', 'Mujer')
-        ]
-    )
+    def es_medico(self):
+        return self.rol == "MEDICO" or self.is_staff or self.is_superuser
 
 
-class Cita(m.Model):
-    """
-    Entidad cita
+class Paciente(models.Model):
+    SEXO_CHOICES = [
+    ("H", "Hombre"),
+    ("M", "Mujer"),
+    ]  
 
-    Características:
-        Día
-        Hora
-    
-    Se debe permitir su consulta, modificación y eliminación, tanto por parte del paciente como del médico
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
+    nombre = models.CharField(max_length=120)
+    direccion = models.CharField(max_length=200)
+    correo = models.EmailField(unique=True)
+    telefono = models.CharField(max_length=20)
+    edad = models.PositiveIntegerField()
+    sexo = models.CharField(max_length=1, choices=SEXO_CHOICES)
 
-    Se manejan notificaciones para el paciente en caso de tener
-    una nueva cita o haber sido eliminada
-    """
+    def __str__(self):
+        return self.nombre
 
-    paciente = m.ForeignKey('Paciente', on_delete=m.CASCADE, related_name="paciente_cita")
-    dia = m.DateField(auto_now_add=True)
-    hora = m.TimeField()
 
-class Consulta(m.Model):
-    """
-    Entidad consulta. Representa una consulta realizada sobre un paciente
+class Cita(models.Model):
+    ESTADO_CHOICES = [
+        ("PROGRAMADA", "Programada"),
+        ("CANCELADA", "Cancelada"),
+        ("ATENDIDA", "Atendida"),
+    ]
 
-    Características:
-        Temperatura Corporal
-        Peso
-        Altura
-        Presión arterial
-
-    INFORMACIÓN ENCRIPTADA
-    """
-
-    paciente = m.ForeignKey('Paciente', on_delete=m.CASCADE, related_name="paciente_consulta")
-    temperatura_corporal = m.DecimalField(max_digits=5, decimal_places=2)
-    peso = m.DecimalField(max_digits=5, decimal_places=2)
-    altura = m.IntegerField() # Altura en centímetros
-    presion_arterial = m.DecimalField(max_digits=5, decimal_places=2)
-
-class Historial(m.Model):
-    """
-    Entidad historial, generada por el médico sobre lo que ocurre en la consulta con el paciente
-
-    Características:
-        Diagnóstico del paciente
-        Resultados de análisis previos del paciente
-        Prescripciones del paciente
-    """
-
-    diagnostico = m.TextField()
-    resultados = m.TextField()
-    prescripciones = m.TextField()
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE)
+    fecha = models.DateField()
+    hora = models.TimeField()
+    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="PROGRAMADA")
 
     class Meta:
-        verbose_name = "Historial"
-        verbose_name_plural = "Historiales"
+        unique_together = ("fecha", "hora")
+        ordering = ["fecha", "hora"]
+
+    def __str__(self):
+        return f"{self.paciente.nombre} - {self.fecha} {self.hora}"
+
+
+class Consulta(models.Model):
+    cita = models.OneToOneField(Cita, on_delete=models.CASCADE)
+    temperatura = models.DecimalField(max_digits=4, decimal_places=1)
+    peso = models.DecimalField(max_digits=5, decimal_places=2)
+    altura = models.DecimalField(max_digits=4, decimal_places=2)
+    presion_arterial = models.CharField(max_length=20)
+    fecha_registro = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Consulta de {self.cita.paciente.nombre}"
+
+
+class Historial(models.Model):
+    consulta = models.OneToOneField(Consulta, on_delete=models.CASCADE)
+    diagnostico = models.TextField()
+    resultados = models.TextField(blank=True)
+    prescripciones = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Historial de {self.consulta.cita.paciente.nombre}"
