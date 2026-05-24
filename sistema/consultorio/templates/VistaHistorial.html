@@ -1,0 +1,138 @@
+{% extends 'Base.html' %}
+
+{% block title %}Historiales clínicos{% endblock %}
+
+{% block content %}
+
+{% if es_medico %}
+<section class="filter-card">
+  <form method="get" class="filter-form">
+
+    <div class="form-group">
+      <label for="paciente">Filtrar por paciente</label>
+
+      <select name="paciente" id="paciente" class="form-control">
+        <option value="">Todos los pacientes</option>
+
+        {% for paciente in pacientes %}
+          <option
+            value="{{ paciente.id }}"
+            {% if paciente_id == paciente.id|stringformat:"s" %}
+              selected
+            {% endif %}
+          >
+            {{ paciente.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <button type="submit" class="btn primary">
+      Filtrar
+    </button>
+
+  </form>
+</section>
+{% endif %}
+
+<header class="page-header">
+  <div>
+
+    <h1>Historiales clínicos</h1>
+
+    <p>
+      Consulta los registros médicos asociados a los citas correspondientes.
+    </p>
+  </div>
+</header>
+
+<section class="records-list">
+
+  {% for historia in historias %}
+
+  <article class="record-card">
+
+    <div class="record-header">
+
+      <div>
+        <h2>
+          {{ historia.consulta.cita.paciente.nombre }}
+        </h2>
+
+        <p>
+          Cita del
+          {{ historia.consulta.cita.fecha|date:"d/m/Y" }}
+          a las
+          {{ historia.consulta.cita.hora|time:"H:i" }}
+        </p>
+      </div>
+
+    </div>
+
+    <div class="record-grid">
+
+      <p>
+        <strong>Temperatura:</strong>
+        {{ historia.consulta.temperatura }} °C
+      </p>
+
+      <p>
+        <strong>Peso:</strong>
+        {{ historia.consulta.peso }} kg
+      </p>
+
+      <p>
+        <strong>Altura:</strong>
+        {{ historia.consulta.altura }} m
+      </p>
+
+      <p>
+        <strong>Presión arterial:</strong>
+        {{ historia.consulta.presion_arterial }}
+      </p>
+
+    </div>
+
+    <div class="record-body">
+
+      <h3>Diagnóstico</h3>
+
+      <p>
+        {{ historia.diagnostico }}
+      </p>
+
+      <h3>Resultados</h3>
+
+      <p>
+        {{ historia.resultados|default:"Sin resultados registrados." }}
+      </p>
+
+      <h3>Prescripciones</h3>
+
+      <p>
+        {{ historia.prescripciones|default:"Sin prescripciones registradas." }}
+      </p>
+
+    </div>
+
+  </article>
+
+  {% empty %}
+
+  <section class="content-card empty-state">
+
+    <h2>
+      No hay historias clínicas registradas
+    </h2>
+
+    <p>
+      Cuando una cita sea atendida, podrás visualizar aquí la información médica registrada.
+    </p>
+
+  </section>
+
+  {% endfor %}
+
+</section>
+
+{% endblock %}

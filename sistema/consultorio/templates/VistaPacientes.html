@@ -1,0 +1,61 @@
+{% extends 'Base.html' %} 
+{% block title %}Lista de pacientes{% endblock %}
+{% block content %}
+<header class="page-header row">
+  <div>
+    <h1>Pacientes registrados</h1>
+  </div>
+
+  <a href="{% url 'crear_paciente' %}" class="btn primary"
+    >Registrar paciente</a
+  >
+</header>
+
+<section class="content-card">
+  <table>
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Teléfono</th>
+        <th>Edad</th>
+        <th>Sexo</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for paciente in pacientes %}
+      <tr>
+        <td>{{ paciente.nombre }}</td>
+        <td>{{ paciente.correo }}</td>
+        <td>{{ paciente.telefono }}</td>
+        <td>{{ paciente.edad }}</td>
+        <td>{{ paciente.get_sexo_display }}</td>
+        <td class="actions">
+        <a href="{% url 'editar_paciente' paciente.id %}" class="action-btn edit-btn">
+            Editar
+        </a>
+
+        <form
+            method="post"
+            action="{% url 'eliminar_paciente' paciente.id %}"
+            onsubmit="return confirm('¿Seguro que deseas eliminar este paciente?');"
+            class="inline-form"
+        >
+            {% csrf_token %}
+            <button type="submit" class="action-btn delete-btn">
+            Eliminar
+            </button>
+        </form>
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" class="empty">No hay pacientes registrados.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

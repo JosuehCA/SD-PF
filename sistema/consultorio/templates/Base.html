@@ -1,0 +1,102 @@
+{% load static %}
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>{% block title %}Consultorio Médico{% endblock %}</title>
+
+    <link rel="stylesheet" href="{% static 'consultorio/styles.css' %}" />
+  </head>
+
+  <body>
+    <div class="app-layout">
+      <aside class="sidebar">
+        <a href="{% url 'dashboard' %}" class="brand">
+          <span class="brand-icon">
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            >
+                <path
+                d="m14.479 19.374-.971.939a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5a5.2 5.2 0 0 1-.219 1.49"
+                />
+                <path d="M15 15h6" />
+                <path d="M18 12v6" />
+            </svg>
+            </span>
+
+          <span>
+            <strong>Consultorio Médico</strong>
+            <small>Panel administrativo</small>
+          </span>
+        </a>
+
+        <nav class="nav-menu">
+          {% if request.user.is_staff or request.user.is_superuser %}
+            <a href="{% url 'pacientes' %}">Pacientes</a>
+            <a href="{% url 'citas' %}">Citas</a>
+            <a href="{% url 'historial' %}">Historial clínico</a>
+            <a href="{% url 'reportes' %}">Reportes</a>
+          {% else %}
+            <a href="{% url 'citas' %}">Mis citas</a>
+            <a href="{% url 'historial' %}">Mi historial clínico</a>
+          {% endif %}
+        </nav>
+
+        <div class="sidebar-footer">
+          <div class="user-summary">
+            <strong>{{ request.user.username }}</strong>
+
+            {% if request.user.is_staff or request.user.is_superuser %}
+              <span>Médico / Administrador</span>
+            {% else %}
+              <span>Paciente</span>
+            {% endif %}
+          </div>
+
+          <form method="post" action="{% url 'logout' %}" class="logout-form">
+            {% csrf_token %}
+            <button type="submit" class="logout-btn">Cerrar sesión</button>
+          </form>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <script>
+        setTimeout(() => {
+            const messages = document.querySelectorAll(".message");
+
+            messages.forEach((message) => {
+            message.style.transition = "opacity 0.5s ease, transform 0.5s ease";
+            message.style.opacity = "0";
+            message.style.transform = "translateY(-8px)";
+
+            setTimeout(() => {
+                message.remove();
+            }, 500);
+            });
+        }, 3000);
+    </script>
+  </body>
+</html>

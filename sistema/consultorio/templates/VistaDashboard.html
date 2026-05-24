@@ -1,0 +1,77 @@
+{% extends 'Base.html' %}
+{% block title %}Inicio{% endblock %}
+{% block content %}
+
+<header class="page-header">
+  <div>
+
+    <h1>
+      Bienvenid@, {{ request.user.first_name|default:request.user.username }}
+    </h1>
+
+  </div>
+</header>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <p>Pacientes registrados</p>
+    <h2>{{ total_pacientes }}</h2>
+  </article>
+
+  <article class="stat-card">
+    <p>Citas totales</p>
+    <h2>{{ total_citas }}</h2>
+  </article>
+
+  <article class="stat-card">
+    <p>Citas programadas</p>
+    <h2>{{ citas_programadas }}</h2>
+  </article>
+</section>
+
+<section class="content-card">
+  <div class="section-header">
+    <div>
+      <h2>Citas recientes</h2>
+
+      <p>Próximas citas registradas en el sistema.</p>
+    </div>
+
+    <a href="{% url 'crear_cita' %}" class="btn primary"> Nueva cita </a>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Paciente</th>
+        <th>Fecha</th>
+        <th>Hora</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for cita in citas_recientes %}
+
+      <tr>
+        <td>{{ cita.paciente.nombre }}</td>
+        <td>{{ cita.fecha }}</td>
+        <td>{{ cita.hora }}</td>
+
+        <td>
+          <span class="badge"> {{ cita.get_estado_display }} </span>
+        </td>
+      </tr>
+
+      {% empty %}
+
+      <tr>
+        <td colspan="4" class="empty">No hay citas registradas.</td>
+      </tr>
+
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% endblock %}

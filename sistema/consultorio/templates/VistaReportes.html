@@ -1,0 +1,85 @@
+{% extends 'Base.html' %}
+{% block title %}Reportes{% endblock %} 
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Reportes del sistema</h1>
+    <p>Visualización general de pacientes, citas e historial clínico.</p>
+  </div>
+</header>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <p>Total de pacientes</p>
+    <h2>{{ total_pacientes }}</h2>
+  </article>
+
+  <article class="stat-card">
+    <p>Total de citas</p>
+    <h2>{{ total_citas }}</h2>
+  </article>
+
+  <article class="stat-card">
+    <p>Historias clínicas</p>
+    <h2>{{ total_historias }}</h2>
+  </article>
+</section>
+
+<section class="content-card">
+  <h2>Lista de pacientes</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Paciente</th>
+        <th>Correo</th>
+        <th>Teléfono</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for paciente in pacientes %}
+      <tr>
+        <td>{{ paciente.nombre }}</td>
+        <td>{{ paciente.correo }}</td>
+        <td>{{ paciente.telefono }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3" class="empty">No hay pacientes registrados.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="content-card">
+  <h2>Calendario de citas</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Paciente</th>
+        <th>Fecha</th>
+        <th>Hora</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      {% for cita in citas %}
+      <tr>
+        <td>{{ cita.paciente.nombre }}</td>
+        <td>{{ cita.fecha }}</td>
+        <td>{{ cita.hora }}</td>
+        <td>{{ cita.get_estado_display }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="4" class="empty">No hay citas registradas.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}
