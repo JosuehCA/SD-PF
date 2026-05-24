@@ -28,14 +28,15 @@
         <div>
           <h2>Datos de la cita médica</h2>
           <p>
-            Selecciona el paciente, la fecha, la hora y el estado de la cita.
+            Selecciona los datos de la cita médica.
           </p>
         </div>
       </div>
 
       <div class="form-grid appointment-grid">
 
-        <div class="form-group">
+        {% if es_medico %}
+        <div class="form-group form-group-full">
           <label for="{{ form.paciente.id_for_label }}">
             {{ form.paciente.label }}
           </label>
@@ -46,18 +47,7 @@
             <small class="error-text">{{ error }}</small>
           {% endfor %}
         </div>
-
-        <div class="form-group">
-          <label for="{{ form.estado.id_for_label }}">
-            {{ form.estado.label }}
-          </label>
-
-          {{ form.estado }}
-
-          {% for error in form.estado.errors %}
-            <small class="error-text">{{ error }}</small>
-          {% endfor %}
-        </div>
+        {% endif %}
 
         <div class="form-group">
           <label for="{{ form.fecha.id_for_label }}">

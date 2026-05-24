@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from django.db.models import Q
 
 
 class Usuario(AbstractUser):
@@ -33,19 +34,29 @@ class Paciente(models.Model):
 
 
 class Cita(models.Model):
-    ESTADO_CHOICES = [
-        ("PROGRAMADA", "Programada"),
-        ("CANCELADA", "Cancelada"),
-        ("ATENDIDA", "Atendida"),
+    ESTADOS = [
+        ("programada", "Programada"),
+        ("cancelada", "Cancelada"),
+        ("atendida", "Atendida"),
     ]
 
-    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE)
+    paciente = models.ForeignKey(Paciente, on_delete=models.CASCADE, related_name="citas")
     fecha = models.DateField()
     hora = models.TimeField()
-    estado = models.CharField(max_length=20, choices=ESTADO_CHOICES, default="PROGRAMADA")
+    estado = models.CharField(
+        max_length=20,
+        choices=ESTADOS,
+        default="programada"
+    )
 
     class Meta:
-        unique_together = ("fecha", "hora")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["fecha", "hora"],
+                condition=Q(estado="programada"),
+                name="unique_cita_programada_por_fecha_hora",
+            )
+        ]
         ordering = ["fecha", "hora"]
 
     def __str__(self):

@@ -81,13 +81,24 @@
     margin-left: auto;
     margin-right: auto;
   }
-  
+
   .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 18px;
+    gap: 24px;
     margin-bottom: 28px;
   }
+  
+  .stats-grid.stats-grid-paciente {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-width: 980px;
+  }
+  
+  .stat-card {
+    width: 100%;
+  }
+
+
   /*sidebar*/
   
   .brand {
@@ -211,6 +222,12 @@
   
   .logout-btn:hover {
     background: rgba(255, 255, 255, 0.26);
+  }
+
+  .disabled-btn {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
   }
   
   /*headers*/
@@ -388,10 +405,8 @@
   .badge {
     display: inline-flex;
     padding: 6px 10px;
-    color: #1e40af;
     font-size: 13px;
     font-weight: 700;
-    background: #dbeafe;
     border-radius: 999px;
   }
   
@@ -880,6 +895,14 @@
     }
   }
   
+
+  @media (max-width: 768px) {
+    .stats-grid,
+    .stats-grid-paciente {
+        grid-template-columns: 1fr;
+    }
+}
+
   @media (max-width: 760px) {
     html,
     body {

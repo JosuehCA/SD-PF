@@ -9,7 +9,8 @@ from .forms import (
     LoginForm,
     PacienteForm,
     PacienteEditForm,
-    CitaForm,
+    CitaMedicoForm,
+    CitaPacienteForm,
     ConsultaHistorialForm,
 )
 
@@ -64,7 +65,7 @@ def dashboard_view(request):
         "es_medico": es_medico(request.user),
         "total_pacientes": total_pacientes,
         "total_citas": citas.count(),
-        "citas_programadas": citas.filter(estado="PROGRAMADA").count(),
+        "citas_programadas": citas.filter(estado="programada").count(),
         "citas_recientes": citas[:5],
     })
 
@@ -149,15 +150,14 @@ def citas_view(request):
         "es_medico": es_medico(request.user),
     })
 
-
 @login_required
 def crear_cita_view(request):
-    form = CitaForm(request.POST or None)
+    if es_medico(request.user):
+        FormularioCita = CitaMedicoForm
+    else:
+        FormularioCita = CitaPacienteForm
 
-    if not es_medico(request.user):
-        paciente = obtener_paciente_usuario(request.user)
-        form.fields["paciente"].initial = paciente
-        form.fields["paciente"].disabled = True
+    form = FormularioCita(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
         try:
@@ -166,7 +166,9 @@ def crear_cita_view(request):
             if not es_medico(request.user):
                 cita.paciente = obtener_paciente_usuario(request.user)
 
+            cita.estado = "programada"
             cita.save()
+
             messages.success(request, "Cita registrada correctamente.")
             return redirect("citas")
 
@@ -176,7 +178,7 @@ def crear_cita_view(request):
     return render(request, "VistaRegistroCita.html", {
         "form": form,
         "titulo": "Registrar cita",
-        "descripcion": "Selecciona paciente, fecha y hora.",
+        "es_medico": es_medico(request.user),
     })
 
 
@@ -184,14 +186,17 @@ def crear_cita_view(request):
 def editar_cita_view(request, cita_id):
     if es_medico(request.user):
         cita = get_object_or_404(Cita, id=cita_id)
+        FormularioCita = CitaMedicoForm
     else:
         paciente = obtener_paciente_usuario(request.user)
         cita = get_object_or_404(Cita, id=cita_id, paciente=paciente)
+        FormularioCita = CitaPacienteForm
 
-    form = CitaForm(request.POST or None, instance=cita)
+    if cita.estado == "atendida":
+        messages.warning(request, "No se puede editar una cita que ya fue atendida.")
+        return redirect("citas")
 
-    if not es_medico(request.user):
-        form.fields["paciente"].disabled = True
+    form = FormularioCita(request.POST or None, instance=cita)
 
     if request.method == "POST" and form.is_valid():
         cita_editada = form.save(commit=False)
@@ -200,13 +205,15 @@ def editar_cita_view(request, cita_id):
             cita_editada.paciente = obtener_paciente_usuario(request.user)
 
         cita_editada.save()
+
         messages.success(request, "Cita actualizada correctamente.")
         return redirect("citas")
 
     return render(request, "VistaRegistroCita.html", {
         "form": form,
         "titulo": "Editar cita",
-        "descripcion": "Modifica la información registrada para esta cita.",
+        "descripcion": "Modifica la fecha u hora de la cita.",
+        "es_medico": es_medico(request.user),
     })
 
 
@@ -219,8 +226,9 @@ def eliminar_cita_view(request, cita_id):
         cita = get_object_or_404(Cita, id=cita_id, paciente=paciente)
 
     if request.method == "POST":
-        cita.delete()
-        messages.success(request, "Cita eliminada correctamente.")
+        cita.estado = "cancelada"
+        cita.save()
+        messages.success(request, "Cita cancelada correctamente.")
 
     return redirect("citas")
 
@@ -252,7 +260,7 @@ def crear_historial_view(request, cita_id):
             prescripciones=form.cleaned_data["prescripciones"],
         )
 
-        cita.estado = "ATENDIDA"
+        cita.estado = "atendida"
         cita.save()
 
         messages.success(request, "Historial clínico registrado correctamente.")

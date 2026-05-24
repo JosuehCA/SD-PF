@@ -304,10 +304,10 @@ class PacienteEditForm(forms.ModelForm):
         return edad
 
 
-class CitaForm(forms.ModelForm):
+class CitaMedicoForm(forms.ModelForm):
     class Meta:
         model = Cita
-        fields = ["paciente", "fecha", "hora", "estado"]
+        fields = ["paciente", "fecha", "hora"]
 
         widgets = {
             "paciente": forms.Select(attrs={
@@ -321,14 +321,10 @@ class CitaForm(forms.ModelForm):
                 "class": "form-control",
                 "type": "time",
             }),
-            "estado": forms.Select(attrs={
-                "class": "form-control",
-            }),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         self.fields["paciente"].empty_label = "Selecciona un paciente"
 
     def clean(self):
@@ -336,43 +332,73 @@ class CitaForm(forms.ModelForm):
         fecha = cleaned_data.get("fecha")
         hora = cleaned_data.get("hora")
 
-        if not fecha or not hora:
-            return cleaned_data
-
-        ahora = timezone.localtime()
-        fecha_actual = ahora.date()
-        hora_actual = ahora.time().replace(second=0, microsecond=0)
-
-        if fecha < fecha_actual:
-            self.add_error(
-                "fecha",
-                "No es posible agendar citas en fechas anteriores al día actual."
-            )
-            return cleaned_data
-
-        if fecha == fecha_actual and hora <= hora_actual:
-            self.add_error(
-                "hora",
-                "No es posible agendar citas en ese horario. Selecciona un horario posterior a la hora actual."
-            )
-            return cleaned_data
-
-        cita_existente = Cita.objects.filter(
-            fecha=fecha,
-            hora=hora,
-        )
-
-        if self.instance.pk:
-            cita_existente = cita_existente.exclude(pk=self.instance.pk)
-
-        if cita_existente.exists():
-            self.add_error(
-                "hora",
-                "Ese horario ya fue reservado. Selecciona otro horario."
-            )
+        validar_fecha_hora_cita(self, fecha, hora)
 
         return cleaned_data
 
+
+class CitaPacienteForm(forms.ModelForm):
+    class Meta:
+        model = Cita
+        fields = ["fecha", "hora"]
+
+        widgets = {
+            "fecha": forms.DateInput(attrs={
+                "class": "form-control",
+                "type": "date",
+            }),
+            "hora": forms.TimeInput(attrs={
+                "class": "form-control",
+                "type": "time",
+            }),
+        }
+
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha = cleaned_data.get("fecha")
+        hora = cleaned_data.get("hora")
+
+        validar_fecha_hora_cita(self, fecha, hora)
+
+        return cleaned_data
+
+
+def validar_fecha_hora_cita(form, fecha, hora):
+    if not fecha or not hora:
+        return
+
+    ahora = timezone.localtime()
+    fecha_actual = ahora.date()
+    hora_actual = ahora.time().replace(second=0, microsecond=0)
+
+    if fecha < fecha_actual:
+        form.add_error(
+            "fecha",
+            "No es posible agendar citas en fechas anteriores al día actual."
+        )
+        return
+
+    if fecha == fecha_actual and hora <= hora_actual:
+        form.add_error(
+            "hora",
+            "No es posible agendar citas en ese horario. Selecciona un horario posterior a la hora actual."
+        )
+        return
+
+    cita_existente = Cita.objects.filter(
+        fecha=fecha,
+        hora=hora,
+        estado= "programada",
+    )
+
+    if form.instance.pk:
+        cita_existente = cita_existente.exclude(pk=form.instance.pk)
+
+    if cita_existente.exists():
+        form.add_error(
+            "hora",
+            "Ese horario ya fue reservado. Selecciona otro horario."
+        )
 
 class ConsultaHistorialForm(forms.Form):
     temperatura = forms.DecimalField(
