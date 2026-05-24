@@ -233,6 +233,8 @@ def eliminar_cita_view(request, cita_id):
     return redirect("citas")
 
 
+
+#irrelevante porque ahora se deshabilita el botón
 @login_required
 @user_passes_test(es_medico)
 def crear_historial_view(request, cita_id):
@@ -263,14 +265,13 @@ def crear_historial_view(request, cita_id):
         cita.estado = "atendida"
         cita.save()
 
-        messages.success(request, "Historial clínico registrado correctamente.")
+        messages.success(request, "Consulta registrada correctamente.")
         return redirect("historial")
 
-    return render(request, "VistaRegistroHistorial.html", {
+    return render(request, "VistaRegistroConsulta.html", {
         "form": form,
         "cita": cita,
-        "titulo": "Registrar historial clínico",
-        "descripcion": "Registra los signos vitales y la relatoría médica de la consulta.",
+        "titulo": "Registrar Consulta clínica",
     })
 
 
