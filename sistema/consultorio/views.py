@@ -1,8 +1,10 @@
+import requests
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib import messages
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 
 from .models import Usuario, Paciente, Cita, Consulta, Historial
 from .forms import (
@@ -159,22 +161,42 @@ def crear_cita_view(request):
 
     form = FormularioCita(request.POST or None)
 
-    if request.method == "POST" and form.is_valid():
-        try:
-            cita = form.save(commit=False)
+    if request.method == "POST":
+        if(form.is_valid()):
+            fecha = form.cleaned_data['fecha'].strftime('%Y-%m-%d')
+            hora = form.cleaned_data['hora'].strftime('%H:%M:%S')
 
-            if not es_medico(request.user):
-                cita.paciente = obtener_paciente_usuario(request.user)
+            try:    # solicitar token
+                url_servidor = "http://127.0.0.1:5001/solicitar_token"
+                respuesta = requests.post(url_servidor, json={'fecha': fecha, 'hora': hora}, timeout=3)
+                
+                if respuesta.status_code == 409:
+                    messages.error(request, "El horario está siendo procesado por otro usuario. Intenta de nuevo.")
+                    return render(request, "VistaRegistrarCita.html", {"form": form})
+                    
+            except requests.exceptions.RequestException:
+                messages.error(request, "Error de comunicación con el servidor de exclusión mutua.")
+                return render(request, "VistaRegistrarCita.html", {"form": form})
+            
+            try:    # entrar a sección crítica
+                with transaction.atomic():
+                    cita = form.save(commit=False)
+                    if not es_medico(request.user):
+                        cita.paciente = obtener_paciente_usuario(request.user)
 
-            cita.estado = "programada"
-            cita.save()
-
-            messages.success(request, "Cita registrada correctamente.")
-            return redirect("citas")
-
-        except IntegrityError as error:
-            messages.error(request, f"No se pudo guardar la cita. Error: {error}")
-
+                    cita.estado = "programada"
+                    cita.save()
+                    messages.success(request, "Cita reservada exitosamente.")
+            except IntegrityError as error:
+                messages.error(request, f"No se pudo guardar la cita. Error: {error}")
+                
+            finally:    # liberar token
+                try:
+                    url_liberacion = "http://127.0.0.1:5001/liberar_token"
+                    requests.post(url_liberacion, json={'fecha': fecha, 'hora': hora}, timeout=3)
+                except requests.exceptions.RequestException:
+                    pass 
+            return redirect('citas')
     return render(request, "VistaRegistroCita.html", {
         "form": form,
         "titulo": "Registrar cita",
