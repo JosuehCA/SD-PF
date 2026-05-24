@@ -3,6 +3,7 @@ from . import views
 
 urlpatterns = [
     path("", views.login_view, name="login"),
+    path("signup/", views.signup_view, name="signup"),
     path("logout/", views.logout_view, name="logout"),
     path("dashboard/", views.dashboard_view, name="dashboard"),
     path("pacientes/", views.pacientes_view, name="pacientes"),
@@ -15,5 +16,8 @@ urlpatterns = [
     path("citas/<int:cita_id>/eliminar/", views.eliminar_cita_view, name="eliminar_cita"),
     path("historial/", views.historial_view, name="historial"),
     path("registrar_consulta/<int:cita_id>/", views.crear_historial_view, name="crear_historial"),
+    path("historial/<int:historial_id>/editar/", views.editar_historial_view, name="editar_historial"),
     path("reportes/", views.reportes_view, name="reportes"),
+    path("cambiar_password/", views.cambiar_password_view, name="cambiar_password"),
+    path("auditoria/", views.auditoria_view, name="auditoria"),
 ]

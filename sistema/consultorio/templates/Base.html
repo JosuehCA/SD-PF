@@ -46,10 +46,12 @@
             <a href="{% url 'citas' %}">Citas</a>
             <a href="{% url 'historial' %}">Historial clínico</a>
             <a href="{% url 'reportes' %}">Reportes</a>
+            <a href="{% url 'auditoria' %}">Auditoría</a>
           {% else %}
             <a href="{% url 'citas' %}">Mis citas</a>
             <a href="{% url 'historial' %}">Mi historial clínico</a>
           {% endif %}
+          <a href="{% url 'cambiar_password' %}">Cambiar contraseña</a>
         </nav>
 
         <div class="sidebar-footer">

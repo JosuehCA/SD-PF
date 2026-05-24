@@ -513,3 +513,130 @@ class ConsultaHistorialForm(forms.Form):
     def clean_prescripciones(self):
         prescripciones = self.cleaned_data.get("prescripciones", "").strip()
         return prescripciones
+
+
+class PacienteSignupForm(forms.ModelForm):
+    """Form for patient self-registration."""
+    username = forms.CharField(
+        label="Usuario",
+        min_length=4,
+        max_length=30,
+        help_text="Usa letras, números, punto o guion bajo.",
+        widget=forms.TextInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ej. aurora.cetina",
+            "autocomplete": "username",
+        })
+    )
+
+    password = forms.CharField(
+        label="Contraseña",
+        help_text="Mínimo 8 caracteres, con mayúscula, minúscula, número y símbolo.",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-control",
+            "placeholder": "Ej. MiClave#2026",
+            "autocomplete": "new-password",
+        })
+    )
+
+    password_confirm = forms.CharField(
+        label="Confirmar contraseña",
+        widget=forms.PasswordInput(attrs={
+            "class": "form-control",
+            "placeholder": "Repite la contraseña",
+            "autocomplete": "new-password",
+        })
+    )
+
+    class Meta:
+        model = Paciente
+        fields = ["nombre", "direccion", "correo", "telefono", "edad", "sexo"]
+
+        widgets = {
+            "nombre": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. Aurora Cetina López",
+            }),
+            "direccion": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. Calle 60 #123, Col. Centro",
+            }),
+            "correo": forms.EmailInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. paciente@gmail.com",
+            }),
+            "telefono": forms.TextInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. 9991234567",
+                "maxlength": "10",
+                "inputmode": "numeric",
+            }),
+            "edad": forms.NumberInput(attrs={
+                "class": "form-control",
+                "placeholder": "Ej. 28",
+                "min": "1",
+                "max": "120",
+            }),
+            "sexo": forms.Select(attrs={
+                "class": "form-control",
+            }),
+        }
+
+    def clean_username(self):
+        username = self.cleaned_data["username"].strip().lower()
+
+        if not re.match(r"^[a-zA-Z0-9._]+$", username):
+            raise forms.ValidationError("El usuario solo puede contener letras, números, punto o guion bajo.")
+
+        if Usuario.objects.filter(username=username).exists():
+            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
+
+        return username
+
+    def clean_password(self):
+        return validar_password(self.cleaned_data["password"])
+
+    def clean_nombre(self):
+        return validar_texto_nombre(self.cleaned_data["nombre"])
+
+    def clean_correo(self):
+        correo = validar_correo(self.cleaned_data["correo"])
+
+        if Paciente.objects.filter(correo=correo).exists():
+            raise forms.ValidationError("Este correo ya está registrado.")
+
+        return correo
+
+    def clean_telefono(self):
+        telefono = validar_telefono(self.cleaned_data["telefono"])
+
+        if Paciente.objects.filter(telefono=telefono).exists():
+            raise forms.ValidationError("Este teléfono ya está registrado.")
+
+        return telefono
+
+    def clean_direccion(self):
+        direccion = self.cleaned_data["direccion"].strip()
+
+        if len(direccion) < 8:
+            raise forms.ValidationError("Ingresa una dirección más completa.")
+
+        return " ".join(direccion.split())
+
+    def clean_edad(self):
+        edad = self.cleaned_data["edad"]
+
+        if edad < 1 or edad > 120:
+            raise forms.ValidationError("La edad debe estar entre 1 y 120 años.")
+
+        return edad
+
+    def clean(self):
+        cleaned_data = super().clean()
+        password = cleaned_data.get("password")
+        password_confirm = cleaned_data.get("password_confirm")
+
+        if password and password_confirm and password != password_confirm:
+            self.add_error("password_confirm", "Las contraseñas no coinciden.")
+
+        return cleaned_data

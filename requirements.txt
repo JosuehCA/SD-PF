@@ -13,3 +13,6 @@ requests==2.34.2
 sqlparse==0.5.5
 urllib3==2.7.0
 Werkzeug==3.1.8
+
+# Optional but recommended: install for AES-256-GCM encryption (production)
+# cryptography>=44.0.0

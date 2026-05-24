@@ -113,6 +113,14 @@
         {{ historia.prescripciones|default:"Sin prescripciones registradas." }}
       </p>
 
+      {% if es_medico %}
+      <div class="record-actions" style="margin-top: 1rem;">
+        <a href="{% url 'editar_historial' historia.id %}" class="btn btn-secondary">
+          Editar historial
+        </a>
+      </div>
+      {% endif %}
+
     </div>
 
   </article>

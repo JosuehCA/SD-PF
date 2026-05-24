@@ -1,3 +1,4 @@
+import os
 import requests
 import threading
 import time
@@ -8,10 +9,15 @@ DATOS_CITA = {
     "hora": "10:00:00"
 }
 
+# Auth header must match TOKEN_SERVER_SECRET env var
+AUTH_HEADERS = {
+    "X-Internal-Auth": os.environ.get("TOKEN_SERVER_SECRET", "dev-secret-change-in-production")
+}
+
 def enviar_peticion(nombre_paciente, resultados):
     print(f"[{nombre_paciente}] Solicitando token para {DATOS_CITA['fecha']} a las {DATOS_CITA['hora']}...")
     try:
-        respuesta = requests.post(URL_SERVER, json=DATOS_CITA, timeout=3)
+        respuesta = requests.post(URL_SERVER, json=DATOS_CITA, headers=AUTH_HEADERS, timeout=3)
         resultados[nombre_paciente] = (respuesta.status_code, respuesta.json())
     except Exception as e:
         resultados[nombre_paciente] = ("Error", str(e))
@@ -34,4 +40,4 @@ if __name__ == "__main__":
         status, json_res = datos
         print(f"{paciente} -> Código HTTP: {status} | Respuesta: {json_res}")
 
-    requests.post("http://127.0.0.1:5001/liberar_token", json=DATOS_CITA)
+    requests.post("http://127.0.0.1:5001/liberar_token", json=DATOS_CITA, headers=AUTH_HEADERS)

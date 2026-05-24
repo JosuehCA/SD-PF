@@ -2,6 +2,8 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
 
+from .fields import EncryptedTextField, EncryptedCharField
+
 
 class Usuario(AbstractUser):
     ROL_CHOICES = [
@@ -65,10 +67,10 @@ class Cita(models.Model):
 
 class Consulta(models.Model):
     cita = models.OneToOneField(Cita, on_delete=models.CASCADE)
-    temperatura = models.DecimalField(max_digits=4, decimal_places=1)
-    peso = models.DecimalField(max_digits=5, decimal_places=2)
-    altura = models.DecimalField(max_digits=4, decimal_places=2)
-    presion_arterial = models.CharField(max_length=20)
+    temperatura = EncryptedCharField(max_length=512)
+    peso = EncryptedCharField(max_length=512)
+    altura = EncryptedCharField(max_length=512)
+    presion_arterial = EncryptedCharField(max_length=512)
     fecha_registro = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -77,9 +79,33 @@ class Consulta(models.Model):
 
 class Historial(models.Model):
     consulta = models.OneToOneField(Consulta, on_delete=models.CASCADE)
-    diagnostico = models.TextField()
-    resultados = models.TextField(blank=True)
-    prescripciones = models.TextField(blank=True)
+    diagnostico = EncryptedTextField()
+    resultados = EncryptedTextField(blank=True)
+    prescripciones = EncryptedTextField(blank=True)
 
     def __str__(self):
         return f"Historial de {self.consulta.cita.paciente.nombre}"
+
+
+class AuditLog(models.Model):
+    """Tracks access and modifications to sensitive clinical data."""
+    ACCIONES = [
+        ("crear", "Crear"),
+        ("editar", "Editar"),
+        ("ver", "Ver"),
+        ("eliminar", "Eliminar"),
+    ]
+
+    usuario = models.ForeignKey(Usuario, on_delete=models.SET_NULL, null=True)
+    accion = models.CharField(max_length=20, choices=ACCIONES)
+    modelo = models.CharField(max_length=50)
+    objeto_id = models.PositiveIntegerField()
+    descripcion = models.TextField(blank=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    ip = models.GenericIPAddressField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-fecha"]
+
+    def __str__(self):
+        return f"{self.usuario} - {self.accion} {self.modelo} #{self.objeto_id}"

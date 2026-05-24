@@ -1,0 +1,53 @@
+{% load static %}
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Crear cuenta - Consultorio Médico</title>
+    <link rel="stylesheet" href="{% static 'consultorio/styles.css' %}" />
+  </head>
+
+  <body>
+    <div class="login-container">
+      <div class="login-card">
+        <h1>{{ titulo }}</h1>
+        <p>{{ descripcion }}</p>
+
+        {% if messages %}
+          <div class="messages">
+            {% for message in messages %}
+              <div class="message {{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <form method="post" novalidate>
+          {% csrf_token %}
+
+          {% for field in form %}
+            <div class="form-group">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}
+                <small class="form-text">{{ field.help_text }}</small>
+              {% endif %}
+              {% if field.errors %}
+                {% for error in field.errors %}
+                  <small class="error-text">{{ error }}</small>
+                {% endfor %}
+              {% endif %}
+            </div>
+          {% endfor %}
+
+          <button type="submit" class="btn btn-primary">Crear cuenta</button>
+        </form>
+
+        <p style="text-align: center; margin-top: 1rem;">
+          ¿Ya tienes cuenta? <a href="{% url 'login' %}">Inicia sesión</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

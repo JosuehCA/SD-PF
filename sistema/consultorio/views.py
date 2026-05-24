@@ -1,16 +1,19 @@
 import requests
 
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.db import IntegrityError, transaction
 
-from .models import Usuario, Paciente, Cita, Consulta, Historial
+from .models import Usuario, Paciente, Cita, Consulta, Historial, AuditLog
 from .forms import (
     LoginForm,
     PacienteForm,
     PacienteEditForm,
+    PacienteSignupForm,
     CitaMedicoForm,
     CitaPacienteForm,
     ConsultaHistorialForm,
@@ -23,6 +26,31 @@ def es_medico(user):
 
 def obtener_paciente_usuario(user):
     return get_object_or_404(Paciente, usuario=user)
+
+
+def get_client_ip(request):
+    """Extract client IP from request for audit logging."""
+    x_forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded:
+        return x_forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+def registrar_auditoria(request, accion, modelo, objeto_id, descripcion=""):
+    """Create an audit log entry."""
+    AuditLog.objects.create(
+        usuario=request.user if request.user.is_authenticated else None,
+        accion=accion,
+        modelo=modelo,
+        objeto_id=objeto_id,
+        descripcion=descripcion,
+        ip=get_client_ip(request),
+    )
+
+
+def get_token_headers():
+    """Get authentication headers for the token server."""
+    return {"X-Internal-Auth": settings.TOKEN_SERVER_SECRET}
 
 
 def login_view(request):
@@ -45,6 +73,33 @@ def login_view(request):
     return render(request, "VistaLogin.html", {
         "form": form,
         "error": error,
+    })
+
+
+def signup_view(request):
+    """Allow patients to self-register."""
+    form = PacienteSignupForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        user = Usuario.objects.create_user(
+            username=form.cleaned_data["username"],
+            password=form.cleaned_data["password"],
+            email=form.cleaned_data["correo"],
+            rol="PACIENTE",
+        )
+
+        paciente = form.save(commit=False)
+        paciente.usuario = user
+        paciente.save()
+
+        login(request, user)
+        messages.success(request, "¡Registro exitoso! Bienvenido al sistema.")
+        return redirect("dashboard")
+
+    return render(request, "VistaSignup.html", {
+        "form": form,
+        "titulo": "Crear cuenta",
+        "descripcion": "Regístrate para agendar tus citas médicas.",
     })
 
 
@@ -96,6 +151,7 @@ def crear_paciente_view(request):
         paciente.usuario = user
         paciente.save()
 
+        registrar_auditoria(request, "crear", "Paciente", paciente.id, f"Paciente creado: {paciente.nombre}")
         messages.success(request, "Paciente registrado correctamente.")
         return redirect("pacientes")
 
@@ -117,6 +173,7 @@ def editar_paciente_view(request, paciente_id):
         paciente.usuario.email = form.cleaned_data["correo"]
         paciente.usuario.save()
 
+        registrar_auditoria(request, "editar", "Paciente", paciente.id, f"Paciente editado: {paciente.nombre}")
         messages.success(request, "Paciente actualizado correctamente.")
         return redirect("pacientes")
 
@@ -133,6 +190,7 @@ def eliminar_paciente_view(request, paciente_id):
     paciente = get_object_or_404(Paciente, id=paciente_id)
 
     if request.method == "POST":
+        registrar_auditoria(request, "eliminar", "Paciente", paciente.id, f"Paciente eliminado: {paciente.nombre}")
         paciente.usuario.delete()
         messages.success(request, "Paciente eliminado correctamente.")
 
@@ -167,16 +225,21 @@ def crear_cita_view(request):
             hora = form.cleaned_data['hora'].strftime('%H:%M:%S')
 
             try:    # solicitar token
-                url_servidor = "http://127.0.0.1:5001/solicitar_token"
-                respuesta = requests.post(url_servidor, json={'fecha': fecha, 'hora': hora}, timeout=3)
+                url_servidor = f"{settings.TOKEN_SERVER_URL}/solicitar_token"
+                respuesta = requests.post(
+                    url_servidor,
+                    json={'fecha': fecha, 'hora': hora},
+                    headers=get_token_headers(),
+                    timeout=3,
+                )
                 
                 if respuesta.status_code == 409:
                     messages.error(request, "El horario está siendo procesado por otro usuario. Intenta de nuevo.")
-                    return render(request, "VistaRegistrarCita.html", {"form": form})
+                    return render(request, "VistaRegistroCita.html", {"form": form, "es_medico": es_medico(request.user)})
                     
             except requests.exceptions.RequestException:
                 messages.error(request, "Error de comunicación con el servidor de exclusión mutua.")
-                return render(request, "VistaRegistrarCita.html", {"form": form})
+                return render(request, "VistaRegistroCita.html", {"form": form, "es_medico": es_medico(request.user)})
             
             try:    # entrar a sección crítica
                 with transaction.atomic():
@@ -186,14 +249,20 @@ def crear_cita_view(request):
 
                     cita.estado = "programada"
                     cita.save()
+                    registrar_auditoria(request, "crear", "Cita", cita.id, f"Cita creada: {cita}")
                     messages.success(request, "Cita reservada exitosamente.")
             except IntegrityError as error:
                 messages.error(request, f"No se pudo guardar la cita. Error: {error}")
                 
             finally:    # liberar token
                 try:
-                    url_liberacion = "http://127.0.0.1:5001/liberar_token"
-                    requests.post(url_liberacion, json={'fecha': fecha, 'hora': hora}, timeout=3)
+                    url_liberacion = f"{settings.TOKEN_SERVER_URL}/liberar_token"
+                    requests.post(
+                        url_liberacion,
+                        json={'fecha': fecha, 'hora': hora},
+                        headers=get_token_headers(),
+                        timeout=3,
+                    )
                 except requests.exceptions.RequestException:
                     pass 
             return redirect('citas')
@@ -227,7 +296,7 @@ def editar_cita_view(request, cita_id):
             cita_editada.paciente = obtener_paciente_usuario(request.user)
 
         cita_editada.save()
-
+        registrar_auditoria(request, "editar", "Cita", cita.id, f"Cita editada: {cita}")
         messages.success(request, "Cita actualizada correctamente.")
         return redirect("citas")
 
@@ -250,6 +319,7 @@ def eliminar_cita_view(request, cita_id):
     if request.method == "POST":
         cita.estado = "cancelada"
         cita.save()
+        registrar_auditoria(request, "editar", "Cita", cita.id, "Cita cancelada")
         messages.success(request, "Cita cancelada correctamente.")
 
     return redirect("citas")
@@ -270,13 +340,13 @@ def crear_historial_view(request, cita_id):
     if request.method == "POST" and form.is_valid():
         consulta = Consulta.objects.create(
             cita=cita,
-            temperatura=form.cleaned_data["temperatura"],
-            peso=form.cleaned_data["peso"],
-            altura=form.cleaned_data["altura"],
+            temperatura=str(form.cleaned_data["temperatura"]),
+            peso=str(form.cleaned_data["peso"]),
+            altura=str(form.cleaned_data["altura"]),
             presion_arterial=form.cleaned_data["presion_arterial"],
         )
 
-        Historial.objects.create(
+        historial = Historial.objects.create(
             consulta=consulta,
             diagnostico=form.cleaned_data["diagnostico"],
             resultados=form.cleaned_data["resultados"],
@@ -286,6 +356,7 @@ def crear_historial_view(request, cita_id):
         cita.estado = "atendida"
         cita.save()
 
+        registrar_auditoria(request, "crear", "Historial", historial.id, f"Historial creado para {cita.paciente.nombre}")
         messages.success(request, "Consulta registrada correctamente.")
         return redirect("historial")
 
@@ -293,6 +364,51 @@ def crear_historial_view(request, cita_id):
         "form": form,
         "cita": cita,
         "titulo": "Registrar Consulta clínica",
+    })
+
+
+@login_required
+@user_passes_test(es_medico)
+def editar_historial_view(request, historial_id):
+    """Allow doctors to edit an existing clinical history record."""
+    historial = get_object_or_404(
+        Historial.objects.select_related("consulta", "consulta__cita", "consulta__cita__paciente"),
+        id=historial_id
+    )
+    consulta = historial.consulta
+
+    initial_data = {
+        "temperatura": consulta.temperatura,
+        "peso": consulta.peso,
+        "altura": consulta.altura,
+        "presion_arterial": consulta.presion_arterial,
+        "diagnostico": historial.diagnostico,
+        "resultados": historial.resultados,
+        "prescripciones": historial.prescripciones,
+    }
+
+    form = ConsultaHistorialForm(request.POST or None, initial=initial_data)
+
+    if request.method == "POST" and form.is_valid():
+        consulta.temperatura = str(form.cleaned_data["temperatura"])
+        consulta.peso = str(form.cleaned_data["peso"])
+        consulta.altura = str(form.cleaned_data["altura"])
+        consulta.presion_arterial = form.cleaned_data["presion_arterial"]
+        consulta.save()
+
+        historial.diagnostico = form.cleaned_data["diagnostico"]
+        historial.resultados = form.cleaned_data["resultados"]
+        historial.prescripciones = form.cleaned_data["prescripciones"]
+        historial.save()
+
+        registrar_auditoria(request, "editar", "Historial", historial.id, f"Historial editado para {consulta.cita.paciente.nombre}")
+        messages.success(request, "Historial clínico actualizado correctamente.")
+        return redirect("historial")
+
+    return render(request, "VistaRegistroConsulta.html", {
+        "form": form,
+        "cita": consulta.cita,
+        "titulo": "Editar Consulta clínica",
     })
 
 
@@ -322,6 +438,9 @@ def historial_view(request):
             "consulta__cita__paciente",
         ).filter(consulta__cita__paciente=paciente).order_by("-consulta__fecha_registro")
 
+        # Audit: patient viewed their own clinical history
+        registrar_auditoria(request, "ver", "Historial", paciente.id, "Paciente consultó su historial clínico")
+
     return render(request, "VistaHistorial.html", {
         "historias": historias,
         "pacientes": pacientes,
@@ -349,3 +468,29 @@ def reportes_view(request):
         "total_citas": citas.count(),
         "total_historias": historias.count(),
     })
+
+
+@login_required
+def cambiar_password_view(request):
+    """Allow any authenticated user to change their password."""
+    form = PasswordChangeForm(request.user, request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        user = form.save()
+        update_session_auth_hash(request, user)
+        registrar_auditoria(request, "editar", "Usuario", user.id, "Contraseña cambiada")
+        messages.success(request, "Contraseña actualizada correctamente.")
+        return redirect("dashboard")
+
+    return render(request, "VistaCambiarPassword.html", {
+        "form": form,
+        "titulo": "Cambiar contraseña",
+    })
+
+
+@login_required
+@user_passes_test(es_medico)
+def auditoria_view(request):
+    """View audit logs (doctors only)."""
+    logs = AuditLog.objects.select_related("usuario").all()[:100]
+    return render(request, "VistaAuditoria.html", {"logs": logs})
