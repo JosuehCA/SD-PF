@@ -1,5 +1,18 @@
 # Sistema Distribuido de Citas Médicas
 
+## Integrantes del equipo
+
+* Cabrera Alcocer Herberth Josueh
+
+* Canto Paredes Rodrigo Adrián
+
+* Ceballos Pérez Andrea
+
+* Dzul López Alex Enrique
+
+* Kuh Esquivel Mauro Arif
+
+
 ## Documentación Técnica
 
 ---
